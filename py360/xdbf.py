@@ -6,9 +6,9 @@ TODO: Sort out unicode problems
 """
 
 import struct
-import xboxtime
+from . import xboxtime
 import time
-from constants import GPDID, GamerTagConstants
+from .constants import GPDID, GamerTagConstants
 
 class Setting(object):
     """ Represents a Setting entry
@@ -55,7 +55,7 @@ class Setting(object):
 
         elif self.content_id == 4: #UTF16-BE
             length = struct.unpack(byte_order + "I", data[16:20])[0]
-            self.data = unicode(data[24:24+length], 'utf-16-be')
+            self.data = str(data[24:24+length], 'utf-16-be')
 
         elif self.content_id == 5: #Float
             self.data = struct.unpack(byte_order + "f", data[16:20])[0]
@@ -96,9 +96,9 @@ class Title(object):
     def get_name(self):
         """ Convert the name from utf-16-be data in a raw string to a unicode object """
         if self.name:
-            return unicode(self.name, 'utf-16-be')
+            return str(self.name, 'utf-16-be')
         else:
-            return u''
+            return ''
 
 class Achievement(object):
     """ Achievement entry object
@@ -139,23 +139,23 @@ class Achievement(object):
     def get_name(self):
         """ Convert the name from utf-16-be data in a raw string to a unicode object """
         if self.name:
-            return unicode(self.name, 'utf-16-be')
+            return str(self.name, 'utf-16-be')
         else:
-            return u''
+            return ''
 
     def get_locked_desc(self):
         """ Convert the locked description from utf-16-be data in a raw string to a unicode object """
         if self.locked_desc:
-            return unicode(self.locked_desc, 'utf-16-be')
+            return str(self.locked_desc, 'utf-16-be')
         else:
-            return u''
+            return ''
 
     def get_unlocked_desc(self):
         """ Convert the unlocked description from utf-16-be data in a raw string to a unicode object """
         if self.unlocked_desc:
-            return unicode(self.unlocked_desc, 'utf-16-be')
+            return str(self.unlocked_desc, 'utf-16-be')
         else:
-            return u''
+            return ''
 
 class Entry(object):
     """ Entry object which describes where to find the data inside the file and its payload type 
@@ -243,7 +243,7 @@ class XDBF(object):
 
     def process_entries(self):
         """ Populates the entries list and the various payload dictionaries """
-        for c in xrange(0, self.entry_count):
+        for c in range(0, self.entry_count):
             self.fd.seek(0x18 + 0x12 * c, 0) 
             data = self.fd.read(0x12)
             e = Entry(data, self.global_offset, self.fd, self.byte_order)
@@ -264,9 +264,9 @@ class XDBF(object):
 
 def print_xdbf(argv):
     if len(argv) < 2:
-        print "USAGE: xdbf.py options [file.gpd] <file2.gpd> ... <filen.gpd>"
-        print "Options:"
-        print "\t\t-p [directory]\t dump images to directory as filename-ID.png"
+        print("USAGE: xdbf.py options [file.gpd] <file2.gpd> ... <filen.gpd>")
+        print("Options:")
+        print("\t\t-p [directory]\t dump images to directory as filename-ID.png")
         return
 
     dump_png = False
@@ -276,30 +276,30 @@ def print_xdbf(argv):
         argv.pop(1)
 
     for fname in argv[1:]:
-        print "Processing %s" % fname
+        print("Processing %s" % fname)
         x = XDBF(fname)
-        print x
+        print(x)
         for e in x.entries:
-            print e
+            print(e)
         for t in x.titles:
-            print x.titles[t]
+            print(x.titles[t])
         for a in x.achievements:
             try:
-                print x.achievements[a]
+                print(x.achievements[a])
             except UnicodeEncodeError:
-                print "Unicode error: Achievement %s" % x.achievements[a].name
+                print("Unicode error: Achievement %s" % x.achievements[a].name)
         for s in x.settings:
-            print x.settings[s]
+            print(x.settings[s])
         for st in x.strings:
             try:
-                print "String 0x%x: %s" % (st, unicode(x.strings[st], 'utf-16-be').strip('\x00'))
+                print("String 0x%x: %s" % (st, str(x.strings[st], 'utf-16-be').strip('\x00')))
             except UnicodeEncodeError:
-                print "Unicode error: String %s:" % x.strings[st]
+                print("Unicode error: String %s:" % x.strings[st])
         for i in x.images:
-            print "Image 0x%x" % i
+            print("Image 0x%x" % i)
             if dump_png:
                 outfile = "%s/%s-%s.png" % (directory, os.path.basename(fname), hex(i))
-                print "Dumping image to %s" % (outfile)
+                print("Dumping image to %s" % (outfile))
                 open(outfile, 'w').write(x.images[i])
 
 if __name__ == '__main__':

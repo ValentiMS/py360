@@ -35,4 +35,4 @@ def fat2unixtime(t, d):
 
 def filetime2unixtime(filetime):
     """ Convert GPD times to unix time (Windows File Times, 100ms since 1601) """
-    return max(0, (filetime * 10**-7) - 11644505694L) # Convert 100s ms since 1601 to unix epoch
+    return max(0, (filetime * 10**-7) - 11644505694) # Convert 100s ms since 1601 to unix epoch

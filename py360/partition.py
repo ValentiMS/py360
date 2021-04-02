@@ -11,7 +11,7 @@ import sys
 import mmap
 import struct
 from threading import Lock
-from cStringIO import StringIO
+from io import StringIO
 
 # TODO: Optional thread safety
 class XTAFFD(object):
@@ -107,15 +107,15 @@ class Partition(object):
         #TODO: Error checking
         fd = open(filename, 'r') # The 'r' is very imporant
         if fd.read(4) != 'XTAF':
-            start = 0x130EB0000L # TODO: Improve this detection mechanism
+            start = 0x130EB0000 # TODO: Improve this detection mechanism
         else:
             start = 0
-        fat = start + 0x1000L
+        fat = start + 0x1000
         fd.seek(0, 2)
         end = fd.tell()
-        rootdir = -(-((end - start) >> 12L) & -0x1000L) + fat #TODO: Understand this better
+        rootdir = -(-((end - start) >> 12) & -0x1000) + fat #TODO: Understand this better
         size = end - rootdir
-        fatsize = size >> 14L
+        fatsize = size >> 14
 
         # This doesn't work because unlike the C version of mmap you can't give it a 64 bit offset
         #fatfd = mmap.mmap(fd.fileno(), fatsize, mmap.PROT_READ, mmap.PROT_READ, offset=fat)
@@ -138,10 +138,10 @@ class Partition(object):
         #self.rootfile = self.parse_directory()
         self.rootfile = self.init_root_directory(recurse = precache)
 
-    def read_cluster(self, cluster, length=0x4000, offset=0L):
+    def read_cluster(self, cluster, length=0x4000, offset=0):
         """ Given a cluster number returns that cluster """
         if length + offset <= 0x4000: #Sanity check
-            diskoffset = (cluster - 1 << 14L) + self.root_dir + offset
+            diskoffset = (cluster - 1 << 14) + self.root_dir + offset
             # Thread safety is optional because the extra function calls are a large burden
             if self.threadsafe:
                 self.lock.acquire() 
@@ -174,7 +174,7 @@ class Partition(object):
         if len(fileobj.clusters) == 0: # Initialise cluster list if necessary
             fileobj.clusters = self.get_clusters(fileobj.fr)
             if len(fileobj.clusters) == 0: # Check the return of get_clusters
-                print "Reading Empty File"
+                print("Reading Empty File")
                 return ""
 
         clusters_to_skip = offset // 0x4000
@@ -192,13 +192,13 @@ class Partition(object):
                 size -= readlen
             return buf.getvalue()
         except IndexError:
-            print "Read overflow?", len(fileobj.clusters), clusters_to_skip
+            print("Read overflow?", len(fileobj.clusters), clusters_to_skip)
             return buf.getvalue()
 
     def get_clusters(self, fr):
         """ Builds a list of the clusters a file hash by parsing the FAT """
         if fr.cluster == 0:
-            print "Empty file"
+            print("Empty file")
             return []
         clusters = [fr.cluster]
         cl = 0x0
@@ -213,8 +213,8 @@ class Partition(object):
                     clusters.append(cl)
             else:
                 if fr.filename[0] != '~':
-                    print "get_clusters fat offset warning %s %x vs %x, %x" %\
-                          (fr.filename, cl_off, len(self.fat_data), len(cldata))
+                    print("get_clusters fat offset warning %s %x vs %x, %x" %\
+                          (fr.filename, cl_off, len(self.fat_data), len(cldata)))
                 cl = 0xFFFFFFF
         return clusters
 
@@ -287,7 +287,7 @@ class Partition(object):
             if f.isDirectory():
                 if not f.root and len(f.clusters) == 0:
                     f = self.parse_directory(f) 
-                files = files + f.files.values()
+                files = files + list(f.files.values())
             yield f.fullpath
 
         return 
@@ -326,7 +326,7 @@ class Partition(object):
                 currentfile = None
 
         if currentfile != None and currentfile.isDirectory():
-            print "Initialising: %s" % filename
+            print("Initialising: %s" % filename)
             currentfile = self.parse_directory(currentfile) # If we're asked for a directory, initialise it before returning
 
         return currentfile

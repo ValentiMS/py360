@@ -8,16 +8,15 @@
 
 
 from fuse import Fuse
-from partition import Partition
+from .partition import Partition
 import time, fuse
-import xboxtime
+from . import xboxtime
 import sys, stat, errno
 
 fuse.fuse_python_api = (0, 2)
 
 if not hasattr(fuse, '__version__'):
-    raise RuntimeError, \
-        "your fuse-py doesn't know of fuse.__version__, probably it's too old."
+    raise RuntimeError("your fuse-py doesn't know of fuse.__version__, probably it's too old.")
 
 # Stat class for file information
 class MyStat(fuse.Stat):
@@ -46,10 +45,10 @@ class Py360(Fuse):
         fileobj = self.partition.get_file(path)
         if fileobj:
             if fileobj.isDirectory():
-                st.st_mode = stat.S_IFDIR | 0555
+                st.st_mode = stat.S_IFDIR | 0o555
                 st.st_nlink = len(fileobj.files)
             else:
-                st.st_mode = stat.S_IFREG | 0444
+                st.st_mode = stat.S_IFREG | 0o444
             if not fileobj.isDirectory() or not fileobj.root:
                 st.st_size = fileobj.fr.fsize
                 st.st_ino = fileobj.fr.cluster
@@ -104,7 +103,7 @@ Python FUSE file system for Xbox 360 hard drives (XFAT)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print "Usage: py360.py [imagefile] [mountpoint] [options]"
+        print("Usage: py360.py [imagefile] [mountpoint] [options]")
         sys.exit(1)
     main()
 

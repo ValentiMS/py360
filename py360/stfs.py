@@ -3,9 +3,9 @@ Secure Transacted File System - A container format found on Xbox 360 XTAF partit
 See http://free60.org/STFS
 """
 import struct
-from constants import ContentTypes, STFSHashInfo
+from .constants import ContentTypes, STFSHashInfo
 import hashlib
-from cStringIO import StringIO
+from io import BytesIO as StringIO
 
 # TODO: Handle verifying non-data blocks
 
@@ -26,8 +26,8 @@ class BlockHashRecord(object):
         self.table = table
         self.blocknum = blocknum
         self.hash = data[:0x14]
-        self.info = ord(data[0x14])
-        self.nextblock = struct.unpack(">I", '\x00' + data[0x15:0x18])[0]
+        self.info = (data[0x14])
+        self.nextblock = struct.unpack(">I", bytes([0x00]) + data[0x15:0x18])[0]
         assert self.info in STFSHashInfo.types, "BlockHashRecord type is unknown"
 
 class FileListing(object):
@@ -38,11 +38,11 @@ class FileListing(object):
         return "STFS File Listing: %s" % self.filename
 
     def __init__(self, data):
-        self.filename = data[:0x28].strip('\x00')
+        self.filename = data[:0x28].strip(bytes([0x00]))
         assert self.filename != '', "FileListing has empty filename"
-        self.isdirectory = 0x80 & ord(data[0x28]) == 0x80
-        self.numblocks = struct.unpack("<I", "%s\x00" % data[0x29:0x29+3])[0] # More little endian madness!
-        self.firstblock = struct.unpack("<I", "%s\x00" % data[0x2F:0x2F+3])[0]# And again!
+        self.isdirectory = 0x80 & (data[0x28]) == 0x80
+        self.numblocks = struct.unpack("<I", data[0x29:0x29+3] + bytes([0x00]))[0] # More little endian madness!
+        self.firstblock = struct.unpack("<I", data[0x2F:0x2F+3] + bytes([0x00]))[0]# And again!
         self.pathindex = struct.unpack(">h", data[0x32:0x34])[0] # Signedness is important here
         self.size = struct.unpack(">I", data[0x34:0x38])[0]
         self.udate = struct.unpack(">H", data[0x38:0x3A])[0]
@@ -63,7 +63,7 @@ class STFS(object):
         else:
             self.fd = fd
         data = self.fd.read(4)
-        assert data in ("CON ", "PIRS", "LIVE"), "STFS Magic not found"
+        assert data in (b"CON ", b"PIRS", b"LIVE"), "STFS Magic not found"
 
         self.table_spacing = [(0xAB, 0x718F, 0xFE7DA), #The distance in blocks between tables
                               (0xAC, 0x723A, 0xFD00B)] #For when tables are 1 block and when they are 2 blocks
@@ -80,7 +80,7 @@ class STFS(object):
         buf = StringIO()
         info = 0x80
         block = firstblock
-        for i in xrange(0, numblocks):
+        for i in range(0, numblocks):
             buf.write(self.read_block(self.fix_blocknum(block), 0x1000))
             blockhash = self.get_blockhash(block)
             if self.table_size_shift > 0 and blockhash.info < 0x80:
@@ -113,9 +113,9 @@ class STFS(object):
                     path_components.append(a.filename)
                 except IndexError:
                     raise AssertionError("IndexError: %s %d %d" % (self.filename, a.pathindex, len(self.filelistings)))
-            path_components.append('')
+            path_components.append(b'')
             path_components.reverse()
-            self.allfiles["/".join(path_components)] = fl
+            self.allfiles["/".join((x.decode("UTF-8") for x in path_components))] = fl
                 
     def read_file(self, filelisting, size=-1):
         """ Given a filelisting object return its data
@@ -201,7 +201,7 @@ class STFS(object):
         if self.magic == "CON ":
             self.console_id = data[6:11]
             self.console_part_number = data[0xB:0x14]
-            self.console_type = ord(data[0x1F:0x20]) #0x02 is RETAIL 0x01 is DEVKIT
+            self.console_type = (data[0x1F:0x20]) #0x02 is RETAIL 0x01 is DEVKIT
             self.certificate_date = data[0x20:0x28]
             #Not using the certificate at the moment so this blob has:
             #Exponent, modulus, cert signature, signature
@@ -219,10 +219,10 @@ class STFS(object):
         self.version = struct.unpack(">I", data[0x358:0x358+4])[0]
         self.base_version = struct.unpack(">I", data[0x35C:0x35C+4])[0]
         self.title_id = struct.unpack(">I", data[0x360:0x360+4])[0]
-        self.platform = ord(data[0x364:0x365])
-        self.executable_type = ord(data[0x365:0x366])
-        self.disc_number = ord(data[0x366:0x367])
-        self.disc_in_set = ord(data[0x367:0x368])
+        self.platform = (data[0x364:0x365])
+        self.executable_type = (data[0x365:0x366])
+        self.disc_number = (data[0x366:0x367])
+        self.disc_in_set = (data[0x367:0x368])
         self.save_game_id = struct.unpack(">I", data[0x368:0x368+4])[0]
         if self.magic == "CON ":
             #assert self.console_id == data[0x36C:0x36C+5], "CON Console ID verification failed" 
@@ -231,10 +231,10 @@ class STFS(object):
             self.console_id = data[0x36C:0x36C+5]
         self.profile_id = data[0x371:0x376]
         
-        self.volume_descriptor_size = ord(data[0x379:0x37A])
-        self.block_seperation = ord(data[0x37B])
+        self.volume_descriptor_size = (data[0x379:0x37A])
+        self.block_seperation = (data[0x37B])
         self.filetable_blockcount = struct.unpack("<H", data[0x37A+2:0x37A+4])[0] #Little Endian. Why?
-        self.filetable_blocknumber = struct.unpack("<I", "%s\x00" % data[0x37A+4:0x37A+7])[0] #Why?!?
+        self.filetable_blocknumber = struct.unpack("<I", data[0x37A+4:0x37A+7] + bytes([0x00]))[0] #Why?!?
         self.tophashtable_hash = data[0x37A+7:0x37A+7+0x14]
         self.allocated_count = struct.unpack(">I", data[0x37A+0x1B:0x37A+0x1B+0x04])[0]
         self.unallocated_count = struct.unpack(">I", data[0x37A+0x1F:0x37A+0x1F+0x4])[0]
@@ -273,28 +273,28 @@ class STFS(object):
 
 def extract_all(argv):
     if len(argv) < 3:
-        print "Usage: stfs.py <input file> <output directory>"
-        print "Dumps contents of stfs file to disk"
+        print("Usage: stfs.py <input file> <output directory>")
+        print("Dumps contents of stfs file to disk")
         return
     s = STFS(argv[1])
     for filename in s.allfiles: # Loop once creating all the directories
         if s.allfiles[filename].isdirectory:
-            print "Creating directory %s" % filename
+            print(("Creating directory %s" % filename))
             dirpath = filename[1:]
             dircomponents = dirpath.split('/')
-            for i in xrange(len(dircomponents)):
+            for i in range(len(dircomponents)):
                 try:
                     os.mkdir("%s/%s" % (argv[2], "/".join(dircomponents[:i+1])))
                 except OSError:
                     pass
     for filename in s.allfiles: # Loop again writing all the files
         if not s.allfiles[filename].isdirectory:
-            print "Writing file %s" % filename
+            print(("Writing file %s" % filename))
             try:
                 open("%s/%s" % (argv[2], filename), 'wb').write(s.read_file(s.allfiles[filename]))
             except Exception as e:
-                print e
-                print argv[2], filename
+                print(e)
+                print((argv[2], filename))
 
 if __name__ == '__main__':
     import sys

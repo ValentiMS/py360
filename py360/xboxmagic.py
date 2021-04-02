@@ -4,7 +4,7 @@
     Returns a string denoting file type
 """
 
-from py360 import *
+from .py360 import *
 PNG_HEADER = "\x89PNG\x0D\x0A\x1A\x0A"
 XTAF_HEADER = "XTAF"
 XDBF_HEADER = "XDBF"
@@ -59,7 +59,7 @@ def find_type(data = None, fd = None):
         return "Account"
     if is_xtaf(data):
         return "XTAF"
-    if fd != None and length > 0x130EB0000l:
+    if fd != None and length > 0x130EB0000:
         fd.seek(0x130EB0000)
         data = fd.read(len(XTAF_HEADER))
         if is_xtaf(data):

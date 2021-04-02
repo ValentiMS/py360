@@ -70,5 +70,5 @@ class Account(object):
 
     def get_gamertag(self):
         """ Return the gamertag name from this account block """
-        return unicode(self.gamertag, 'utf-16-be').strip('\x00')
+        return str(self.gamertag, 'utf-16-be').strip('\x00')
         
